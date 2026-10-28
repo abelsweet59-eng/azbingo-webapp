@@ -45,22 +45,24 @@
       </div>
     </section>
 
-    <!-- SCREEN 2: STAKE -->
+    <!-- SCREEN 2: STAKE (የካርቴላ ብዛት) -->
     <section id="screen-stake" class="screen">
       <div class="screen-header">
         <button class="back-btn" data-back>←</button>
-        <h2>ውርርድ ምረጥ</h2>
+        <h2>ካርቴላ ምረጥ</h2>
       </div>
+      <p class="hint">ስንት ካርቴላ መጫወት ትፈልጋለህ? (ለእያንዳንዱ 10 ብር)</p>
       <div class="stake-list">
-        <button class="stake-card" data-stake="10">
-          <div class="stake-amount">10 ብር</div>
-          <div class="stake-desc">ፈጣን ጨዋታ</div>
+        <button class="stake-card" data-cards="1">
+          <div class="stake-amount">1 ካርቴላ</div>
+          <div class="stake-desc">10 ብር</div>
         </button>
-        <button class="stake-card" data-stake="20">
-          <div class="stake-amount">20 ብር</div>
-          <div class="stake-desc">ዋና ጨዋታ</div>
+        <button class="stake-card" data-cards="2">
+          <div class="stake-amount">2 ካርቴላ</div>
+          <div class="stake-desc">20 ብር</div>
         </button>
       </div>
+      <p class="hint">💡 ብዙ ካርቴላ = የማሸነፍ ዕድል ሰፊ</p>
     </section>
 
     <!-- SCREEN 3: NUMBER PICKER -->
@@ -70,14 +72,18 @@
         <h2>ቁጥር ምረጥ</h2>
         <span class="timer-badge" id="pickTimer">60</span>
       </div>
-      <p class="hint">ከ 1–300 ሁለት ቁጥሮች ይምረጡ (20 ብር)</p>
+      <p class="hint">ከ 1–300 ቁጥሮች ይምረጡ (ለእያንዳንዱ 10 ብር)</p>
+      <div class="live-count-bar">
+        <span>🔴 የተያዙ: <b id="liveCount">0</b></span>
+        <span>💰 ዋጋ: <b>10 ብር / ካርቴላ</b></span>
+      </div>
       <div class="selected-numbers">
         <span class="num-pill" id="pill1">-</span>
         <span class="num-pill" id="pill2">-</span>
       </div>
       <div class="number-grid" id="numberGrid"></div>
       <button class="btn-primary sticky-bottom" id="btnConfirmNumbers" disabled>
-        ✅ አረጋግጥ (20 ብር)
+        ✅ አረጋግጥ (10 ብር)
       </button>
     </section>
 
@@ -97,7 +103,7 @@
         </div>
       </div>
       <div class="called-strip" id="calledStrip"></div>
-      <div class="bingo-card" id="bingoCard"></div>
+      <div id="bingoCardsContainer"></div>
       <button class="btn-bingo" id="btnBingo">🎉 BINGO!</button>
       <div class="winners-ticker" id="winnersTicker">
         <span>🏆 አሸናፊ: </span>
