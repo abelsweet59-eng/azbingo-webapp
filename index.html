@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f0a1e">
+  <title>AZbingo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- WALLET BAR -->
+    <header class="wallet-bar">
+      <div class="wallet-item">
+        <span class="label">Main</span>
+        <span class="amount" id="mainWallet">0.00</span>
+      </div>
+      <div class="wallet-item play">
+        <span class="label">Play</span>
+        <span class="amount" id="playWallet">0.00</span>
+      </div>
+      <button class="deposit-btn" id="btnDeposit">+ ሙላ</button>
+    </header>
+
+    <!-- SCREEN 1: HOME -->
+    <section id="screen-home" class="screen active">
+      <div class="logo-area">
+        <h1 class="logo">AZ<span>bingo</span></h1>
+        <p class="tagline">🎯 በየደቂቃው ያሸንፉ</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-icon">🎰</div>
+        <h2>እንኳን ደህና መጡ!</h2>
+        <p>ቁጥር ምረጥ፣ ተጫወት፣ አሸንፍ!</p>
+        <button class="btn-primary" id="btnRegister">🎮 ተጫወት</button>
+        <button class="btn-secondary" id="btnWalletHome">👛 ዋሌት</button>
+      </div>
+      <div class="quick-actions">
+        <button class="action-card" data-action="play"><span class="icon">🎮</span><span>ተጫወት</span></button>
+        <button class="action-card" data-action="deposit"><span class="icon">💰</span><span>ሙላ</span></button>
+        <button class="action-card" data-action="wallet"><span class="icon">👛</span><span>ዋሌት</span></button>
+        <button class="action-card" data-action="help"><span class="icon">❓</span><span>እርዳታ</span></button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: STAKE -->
+    <section id="screen-stake" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" data-back>←</button>
+        <h2>ውርርድ ምረጥ</h2>
+      </div>
+      <div class="stake-list">
+        <button class="stake-card" data-stake="10">
+          <div class="stake-amount">10 ብር</div>
+          <div class="stake-desc">ፈጣን ጨዋታ</div>
+        </button>
+        <button class="stake-card" data-stake="20">
+          <div class="stake-amount">20 ብር</div>
+          <div class="stake-desc">ዋና ጨዋታ</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: NUMBER PICKER -->
+    <section id="screen-numbers" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" data-back>←</button>
+        <h2>ቁጥር ምረጥ</h2>
+        <span class="timer-badge" id="pickTimer">60</span>
+      </div>
+      <p class="hint">ከ 1–300 ሁለት ቁጥሮች ይምረጡ (20 ብር)</p>
+      <div class="selected-numbers">
+        <span class="num-pill" id="pill1">-</span>
+        <span class="num-pill" id="pill2">-</span>
+      </div>
+      <div class="number-grid" id="numberGrid"></div>
+      <button class="btn-primary sticky-bottom" id="btnConfirmNumbers" disabled>
+        ✅ አረጋግጥ (20 ብር)
+      </button>
+    </section>
+
+    <!-- SCREEN 4: GAME -->
+    <section id="screen-game" class="screen game-screen">
+      <div class="game-topbar">
+        <div class="called-display">
+          <span class="label">ተጠራ</span>
+          <span class="big-num" id="lastCalled">-</span>
+        </div>
+        <div class="game-timer">
+          <span class="timer-ring" id="gameTimer">⏱</span>
+        </div>
+        <div class="players-count">
+          <span class="label">ተጫዋቾች</span>
+          <span class="big-num" id="playerCount">0</span>
+        </div>
+      </div>
+      <div class="called-strip" id="calledStrip"></div>
+      <div class="bingo-card" id="bingoCard"></div>
+      <button class="btn-bingo" id="btnBingo">🎉 BINGO!</button>
+      <div class="winners-ticker" id="winnersTicker">
+        <span>🏆 አሸናፊ: </span>
+        <span id="winnerName">-</span>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: WALLET -->
+    <section id="screen-wallet" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" data-back>←</button>
+        <h2>👛 ዋሌት</h2>
+      </div>
+      <div class="wallet-detail">
+        <div class="wallet-box main">
+          <span class="label">Main Wallet</span>
+          <span class="amount-big" id="mainWalletDetail">0.00 ብር</span>
+        </div>
+        <div class="wallet-box play">
+          <span class="label">Play Wallet</span>
+          <span class="amount-big" id="playWalletDetail">0.00 ብር</span>
+        </div>
+      </div>
+      <div class="deposit-form">
+        <h3>💰 ሂሳብ ሙላ</h3>
+        <p class="hint">ከ 10 ብር ጀምሮ</p>
+        <div class="amount-options">
+          <button data-amt="10">10</button>
+          <button data-amt="20">20</button>
+          <button data-amt="50">50</button>
+          <button data-amt="100">100</button>
+        </div>
+        <input type="number" id="depositAmount" placeholder="መጠን (ብር)" min="10">
+        <button class="btn-primary" id="btnConfirmDeposit">💳 ሙላ</button>
+      </div>
+    </section>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+  </div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
