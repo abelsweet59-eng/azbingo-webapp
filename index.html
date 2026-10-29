@@ -30,7 +30,6 @@
             touch-action: manipulation;
             background-color: #0b0317;
         }
-
         .custom-scroll::-webkit-scrollbar {
             width: 3px;
             height: 3px;
@@ -39,7 +38,6 @@
             background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
         }
-
         @keyframes pulseGlow {
             0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
             50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(245, 158, 11, 0.9); }
@@ -67,7 +65,7 @@
                     <svg id="sound-icon-on" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
                     <svg id="sound-icon-off" class="w-5 h-5 hidden text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                 </button>
-                <button onclick="toggleAdminPanel()" class="text-xs bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-400/30">Admin</button>
+                <button onclick="openAdminPanel()" class="text-xs bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-400/30">Admin</button>
             </div>
         </header>
 
@@ -252,6 +250,22 @@
                 </div>
             </div>
 
+            <!-- ADMIN PANEL VIEW -->
+            <div id="tab-admin-panel" class="tab-content hidden flex-1 p-3 space-y-3 overflow-y-auto custom-scroll bg-[#120624]">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h2 class="text-sm font-bold text-amber-400">🛡️ Admin Dashboard</h2>
+                    <button onclick="switchTab('game', document.querySelector('.nav-btn'))" class="text-xs bg-white/10 px-2 py-1 rounded">Close</button>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-gray-300">Pending Deposit Requests</div>
+                    <div id="admin-deposits-list" class="space-y-2">
+                        <div class="bg-black/40 p-3 rounded-xl border border-white/10 text-xs text-center text-gray-400">
+                            No pending requests at the moment.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- WINNING OVERLAY POPUP -->
@@ -304,9 +318,9 @@
     <script>
         const API_BASE_URL = "https://azbingoapi.fra.appwrite.run";
         
-        let telegramUserId = "test-user-123";
+        let telegramUserId = "371093083";
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-            telegramUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id);
+            telegramUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id || "371093083");
         }
 
         let audioEnabled = true;
@@ -938,8 +952,28 @@
             }
         }
 
-        function toggleAdminPanel() {
-            alert('Admin controls must be accessed via authorized permissions.');
+        async function openAdminPanel() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/verifyAdmin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-appwrite-user-id': telegramUserId
+                    }
+                });
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch (e) { data = { isAdmin: false }; }
+
+                if (data.isAdmin) {
+                    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+                    document.getElementById('tab-admin-panel').classList.remove('hidden');
+                } else {
+                    alert('Admin controls must be accessed via authorized permissions.');
+                }
+            } catch (err) {
+                alert('Authorization check failed: ' + err.message);
+            }
         }
 
         function switchTab(tabId, btn) {
@@ -951,8 +985,10 @@
                 b.classList.add('text-gray-400');
             });
 
-            btn.classList.remove('text-gray-400');
-            btn.classList.add('text-purple-400');
+            if (btn && btn.classList) {
+                btn.classList.remove('text-gray-400');
+                btn.classList.add('text-purple-400');
+            }
         }
     </script>
 </body>
