@@ -24,7 +24,13 @@ export default async ({ req, res, log, error }) => {
         }
         
         if (path === "/requestDeposit" && method === "POST") {
-            const body = JSON.parse(req.body || '{}');
+            let body = {};
+            try {
+                body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+            } catch (e) {
+                body = {};
+            }
+            
             log(`Deposit requested by user ${userId}: Amount = ${body.amount}, Ref = ${body.reference}`);
             return res.send(JSON.stringify({ ok: true, message: "Deposit request received successfully" }), 200, {
                 ...corsHeaders,
@@ -33,7 +39,13 @@ export default async ({ req, res, log, error }) => {
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
-            const body = JSON.parse(req.body || '{}');
+            let body = {};
+            try {
+                body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+            } catch (e) {
+                body = {};
+            }
+
             log(`Withdrawal requested by user ${userId}: Amount = ${body.amount}`);
             return res.send(JSON.stringify({ ok: true, message: "Withdrawal request received successfully" }), 200, {
                 ...corsHeaders,
@@ -41,7 +53,6 @@ export default async ({ req, res, log, error }) => {
             });
         }
 
-        // Admin verification route
         if (path === "/verifyAdmin" && method === "POST") {
             if (userId === ADMIN_ID) {
                 return res.send(JSON.stringify({ isAdmin: true }), 200, { ...corsHeaders, "Content-Type": "application/json" });
@@ -55,6 +66,7 @@ export default async ({ req, res, log, error }) => {
         });
 
     } catch (err) {
+        error(`Server Error: ${err.message}`);
         return res.send(JSON.stringify({ error: err.message }), 500, {
             ...corsHeaders,
             "Content-Type": "application/json"
