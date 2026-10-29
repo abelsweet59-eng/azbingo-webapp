@@ -17,18 +17,18 @@ export default async ({ req, res, log, error }) => {
 
     try {
         let body = {};
-        if (req.payload) {
-            try {
-                body = typeof req.payload === 'string' ? JSON.parse(req.payload) : req.payload;
-            } catch (e) {
-                body = {};
+        try {
+            if (typeof req.payload === 'string' && req.payload.length > 0) {
+                body = JSON.parse(req.payload);
+            } else if (typeof req.body === 'string' && req.body.length > 0) {
+                body = JSON.parse(req.body);
+            } else if (req.payload && typeof req.payload === 'object') {
+                body = req.payload;
+            } else if (req.body && typeof req.body === 'object') {
+                body = req.body;
             }
-        } else if (req.body) {
-            try {
-                body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-            } catch (e) {
-                body = {};
-            }
+        } catch (parseErr) {
+            body = {};
         }
 
         if (path === "/createUserProfile" && method === "POST") {
@@ -36,12 +36,16 @@ export default async ({ req, res, log, error }) => {
         }
         
         if (path === "/requestDeposit" && method === "POST") {
-            log(`Deposit requested by user ${userId}: Amount = ${body.amount}, Ref = ${body.reference}`);
+            const amount = body.amount || 0;
+            const reference = body.reference || 'N/A';
+            log(`Deposit requested by user ${userId}: Amount = ${amount}, Ref = ${reference}`);
             return res.json({ ok: true, message: "Deposit request received successfully" }, 200, corsHeaders);
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
-            log(`Withdrawal requested by user ${userId}: Amount = ${body.amount}`);
+            const amount = body.amount || 0;
+            const phone = body.phone || 'N/A';
+            log(`Withdrawal requested by user ${userId}: Amount = ${amount}, Phone = ${phone}`);
             return res.json({ ok: true, message: "Withdrawal request received successfully" }, 200, corsHeaders);
         }
 
