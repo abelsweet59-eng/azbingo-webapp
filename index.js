@@ -1,179 +1,210 @@
+import { Client, Databases, Users } from 'node-appwrite';
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-
+// Firebase Admin initialization (Firestore-ን በቀጥታ ለመጠቀም)
 initializeApp();
 const db = getFirestore();
 
-function requireUser(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
-  return request.auth.uid;
+// 1. ዩዘሩ መግባቱን ማረጋገጫ (Auth Verification)
+function requireUser(req) {
+  // Appwrite በ Headers በኩል የዩዘርን መረጃ ያሳልፋል (ወይም ከአፕራይት SDK)
+  const userHeader = req.headers['x-appwrite-user-id'];
+  if (!userHeader) {
+    throw new Error("Unauthorized: Sign in first.");
+  }
+  return userHeader;
 }
-async function requireAdmin(request) {
-  const uid = requireUser(request);
+
+// 2. አድሚን መሆኑን ማረጋገጫ
+async function requireAdmin(req) {
+  const uid = requireUser(req);
   const snap = await db.doc(`admins/${uid}`).get();
   if (!snap.exists || snap.data().enabled !== true) {
-    throw new HttpsError("permission-denied", "Admin permission required.");
+    throw new Error("Forbidden: Admin permission required.");
   }
   return uid;
 }
+
 function validAmount(amount, minimum = 100) {
   return Number.isInteger(amount) && amount >= minimum && amount <= 1000000;
 }
 
-// Create the user wallet exactly once. Bonus is a separate, play-only balance.
-exports.createUserProfile = onCall(async (request) => {
-  const uid = requireUser(request);
-  const ref = db.doc(`users/${uid}`);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) {
-      tx.set(ref, {
-        cashBalance: 0,
-        playBonus: 20,
-        reservedWithdrawal: 0,
-        createdAt: FieldValue.serverTimestamp()
+// 3. ዋናው የአፕራይት ፋንክሽን መግቢያ (Entry Point)
+export default async ({ req, res, log, error }) => {
+  // የትኛውን ኤፒአይ (Endpoint / Action) እንደሚፈልግ ከ Path ወይም ከ Request Body እንቀበላለን
+  const path = req.path || '/';
+  const data = req.body || {};
+
+  try {
+    // ----------------------------------------------------
+    // createUserProfile
+    // ----------------------------------------------------
+    if (path === '/createUserProfile' || req.headers['x-action'] === 'createUserProfile') {
+      const uid = requireUser(req);
+      const ref = db.doc(`users/${uid}`);
+      
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) {
+          tx.set(ref, {
+            cashBalance: 0,
+            playBonus: 20,
+            reservedWithdrawal: 0,
+            createdAt: FieldValue.serverTimestamp()
+          });
+        }
       });
+      return res.json({ ok: true });
     }
-  });
-  return { ok: true };
-});
 
-// Client submits a deposit reference. This DOES NOT credit money.
-exports.requestDeposit = onCall(async (request) => {
-  const uid = requireUser(request);
-  const { amount, reference } = request.data || {};
-  if (!validAmount(amount, 100)) throw new HttpsError("invalid-argument", "Minimum deposit is 100 ETB.");
-  if (typeof reference !== "string" || reference.trim().length < 4 || reference.length > 100) {
-    throw new HttpsError("invalid-argument", "Valid Telebirr reference code required.");
-  }
-  const refKey = reference.trim().replace(/[^a-zA-Z0-9_-]/g, "").toUpperCase();
-  if (!refKey) throw new HttpsError("invalid-argument", "Invalid reference code.");
-  const duplicate = await db.collection("depositRequests").where("referenceKey", "==", refKey).limit(1).get();
-  if (!duplicate.empty) throw new HttpsError("already-exists", "This payment reference has already been submitted.");
-  const doc = await db.collection("depositRequests").add({
-    uid, amount, reference: reference.trim(), referenceKey: refKey,
-    status: "pending", createdAt: FieldValue.serverTimestamp()
-  });
-  return { ok: true, requestId: doc.id, status: "pending" };
-});
-
-// Admin approves a deposit only after checking Telebirr receipt/payment independently.
-exports.reviewDeposit = onCall(async (request) => {
-  const adminUid = await requireAdmin(request);
-  const { requestId, approve, note = "" } = request.data || {};
-  if (typeof requestId !== "string" || typeof approve !== "boolean") {
-    throw new HttpsError("invalid-argument", "requestId and approve are required.");
-  }
-  const reqRef = db.doc(`depositRequests/${requestId}`);
-  await db.runTransaction(async (tx) => {
-    const reqSnap = await tx.get(reqRef);
-    if (!reqSnap.exists) throw new HttpsError("not-found", "Deposit request not found.");
-    const req = reqSnap.data();
-    if (req.status !== "pending") throw new HttpsError("failed-precondition", "Request already reviewed.");
-    tx.update(reqRef, {
-      status: approve ? "approved" : "rejected",
-      reviewedBy: adminUid, reviewNote: String(note).slice(0, 500),
-      reviewedAt: FieldValue.serverTimestamp()
-    });
-    if (approve) {
-      const userRef = db.doc(`users/${req.uid}`);
-      tx.update(userRef, { cashBalance: FieldValue.increment(req.amount) });
-      tx.set(db.collection("walletLedger").doc(), {
-        uid: req.uid, type: "deposit", amount: req.amount, requestId,
-        approvedBy: adminUid, createdAt: FieldValue.serverTimestamp()
+    // ----------------------------------------------------
+    // requestDeposit
+    // ----------------------------------------------------
+    if (path === '/requestDeposit' || req.headers['x-action'] === 'requestDeposit') {
+      const uid = requireUser(req);
+      const { amount, reference } = data;
+      
+      if (!validAmount(amount, 100)) return res.json({ ok: false, error: "Minimum deposit is 100 ETB." }, 400);
+      if (typeof reference !== "string" || reference.trim().length < 4 || reference.length > 100) {
+        return res.json({ ok: false, error: "Valid Telebirr reference code required." }, 400);
+      }
+      
+      const refKey = reference.trim().replace(/[^a-zA-Z0-9_-]/g, "").toUpperCase();
+      const duplicate = await db.collection("depositRequests").where("referenceKey", "==", refKey).limit(1).get();
+      if (!duplicate.empty) return res.json({ ok: false, error: "This payment reference has already been submitted." }, 400);
+      
+      const doc = await db.collection("depositRequests").add({
+        uid, amount, reference: reference.trim(), referenceKey: refKey,
+        status: "pending", createdAt: FieldValue.serverTimestamp()
       });
+      return res.json({ ok: true, requestId: doc.id, status: "pending" });
     }
-  });
-  return { ok: true };
-});
 
-// Reserve only cash funds. Bonus balance cannot be withdrawn.
-exports.requestWithdrawal = onCall(async (request) => {
-  const uid = requireUser(request);
-  const { amount, phone } = request.data || {};
-  if (!validAmount(amount, 100)) throw new HttpsError("invalid-argument", "Minimum withdrawal is 100 ETB.");
-  if (typeof phone !== "string" || !/^(09|07)\d{8}$/.test(phone.trim())) {
-    throw new HttpsError("invalid-argument", "Valid Ethiopian mobile number required.");
-  }
-  const userRef = db.doc(`users/${uid}`);
-  const reqRef = db.collection("withdrawalRequests").doc();
-  await db.runTransaction(async (tx) => {
-    const userSnap = await tx.get(userRef);
-    if (!userSnap.exists) throw new HttpsError("failed-precondition", "User profile missing.");
-    const user = userSnap.data();
-    const available = Number(user.cashBalance || 0) - Number(user.reservedWithdrawal || 0);
-    if (available < amount) throw new HttpsError("failed-precondition", "Insufficient confirmed cash balance.");
-    tx.update(userRef, { reservedWithdrawal: FieldValue.increment(amount) });
-    tx.set(reqRef, {
-      uid, amount, phone: phone.trim(), status: "pending",
-      createdAt: FieldValue.serverTimestamp()
-    });
-  });
-  return { ok: true, requestId: reqRef.id, status: "pending" };
-});
-
-// Admin marks withdrawal paid only after manually sending Telebirr payment.
-// Rejecting releases the reserved amount.
-exports.reviewWithdrawal = onCall(async (request) => {
-  const adminUid = await requireAdmin(request);
-  const { requestId, approve, note = "" } = request.data || {};
-  if (typeof requestId !== "string" || typeof approve !== "boolean") {
-    throw new HttpsError("invalid-argument", "requestId and approve are required.");
-  }
-  const reqRef = db.doc(`withdrawalRequests/${requestId}`);
-  await db.runTransaction(async (tx) => {
-    const reqSnap = await tx.get(reqRef);
-    if (!reqSnap.exists) throw new HttpsError("not-found", "Withdrawal request not found.");
-    const req = reqSnap.data();
-    if (req.status !== "pending") throw new HttpsError("failed-precondition", "Request already reviewed.");
-    const userRef = db.doc(`users/${req.uid}`);
-    const userSnap = await tx.get(userRef);
-    if (!userSnap.exists) throw new HttpsError("failed-precondition", "User profile missing.");
-    tx.update(userRef, {
-      reservedWithdrawal: FieldValue.increment(-req.amount),
-      ...(approve ? { cashBalance: FieldValue.increment(-req.amount) } : {})
-    });
-    tx.update(reqRef, {
-      status: approve ? "paid" : "rejected",
-      reviewedBy: adminUid, reviewNote: String(note).slice(0, 500),
-      reviewedAt: FieldValue.serverTimestamp()
-    });
-    if (approve) {
-      tx.set(db.collection("walletLedger").doc(), {
-        uid: req.uid, type: "withdrawal", amount: -req.amount,
-        requestId, approvedBy: adminUid, createdAt: FieldValue.serverTimestamp()
+    // ----------------------------------------------------
+    // reviewDeposit (Admin)
+    // ----------------------------------------------------
+    if (path === '/reviewDeposit' || req.headers['x-action'] === 'reviewDeposit') {
+      const adminUid = await requireAdmin(req);
+      const { requestId, approve, note = "" } = data;
+      
+      const reqRef = db.doc(`depositRequests/${requestId}`);
+      await db.runTransaction(async (tx) => {
+        const reqSnap = await tx.get(reqRef);
+        if (!reqSnap.exists) throw new Error("Deposit request not found.");
+        const depositReq = reqSnap.data();
+        if (depositReq.status !== "pending") throw new Error("Request already reviewed.");
+        
+        tx.update(reqRef, {
+          status: approve ? "approved" : "rejected",
+          reviewedBy: adminUid, reviewNote: String(note).slice(0, 500),
+          reviewedAt: FieldValue.serverTimestamp()
+        });
+        
+        if (approve) {
+          const userRef = db.doc(`users/${depositReq.uid}`);
+          tx.update(userRef, { cashBalance: FieldValue.increment(depositReq.amount) });
+          tx.set(db.collection("walletLedger").doc(), {
+            uid: depositReq.uid, type: "deposit", amount: depositReq.amount, requestId,
+            approvedBy: adminUid, createdAt: FieldValue.serverTimestamp()
+          });
+        }
       });
+      return res.json({ ok: true });
     }
-  });
-  return { ok: true };
-});
 
-// One shared room state. All clients subscribe to gameRooms/main in Firestore.
-// Only admin can open/close a round or publish called numbers.
-exports.setRoomState = onCall(async (request) => {
-  const adminUid = await requireAdmin(request);
-  const { status, calledNumbers = [], playersCount = 0, prizePool = 0 } = request.data || {};
-  if (!["waiting", "registering", "calling", "finished"].includes(status)) {
-    throw new HttpsError("invalid-argument", "Invalid room status.");
-  }
-  if (!Array.isArray(calledNumbers) || calledNumbers.length > 75 ||
-      calledNumbers.some(n => !Number.isInteger(n) || n < 1 || n > 75)) {
-    throw new HttpsError("invalid-argument", "Called numbers must be unique bingo numbers from 1 to 75.");
-  }
-  if (new Set(calledNumbers).size !== calledNumbers.length ||
-      !Number.isInteger(playersCount) || playersCount < 0 ||
-      !Number.isFinite(prizePool) || prizePool < 0) {
-    throw new HttpsError("invalid-argument", "Invalid room statistics.");
-  }
-  await db.doc("gameRooms/main").set({
-    status, calledNumbers, playersCount, prizePool,
-    updatedBy: adminUid, updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
-  return { ok: true };
-});
+    // ----------------------------------------------------
+    // requestWithdrawal
+    // ----------------------------------------------------
+    if (path === '/requestWithdrawal' || req.headers['x-action'] === 'requestWithdrawal') {
+      const uid = requireUser(req);
+      const { amount, phone } = data;
+      
+      if (!validAmount(amount, 100)) return res.json({ ok: false, error: "Minimum withdrawal is 100 ETB." }, 400);
+      if (typeof phone !== "string" || !/^(09|07)\d{8}$/.test(phone.trim())) {
+        return res.json({ ok: false, error: "Valid Ethiopian mobile number required." }, 400);
+      }
+      
+      const userRef = db.doc(`users/${uid}`);
+      const reqRef = db.collection("withdrawalRequests").doc();
+      
+      await db.runTransaction(async (tx) => {
+        const userSnap = await tx.get(userRef);
+        if (!userSnap.exists) throw new Error("User profile missing.");
+        const user = userSnap.data();
+        const available = Number(user.cashBalance || 0) - Number(user.reservedWithdrawal || 0);
+        if (available < amount) throw new Error("Insufficient confirmed cash balance.");
+        
+        tx.update(userRef, { reservedWithdrawal: FieldValue.increment(amount) });
+        tx.set(reqRef, {
+          uid, amount, phone: phone.trim(), status: "pending",
+          createdAt: FieldValue.serverTimestamp()
+        });
+      });
+      return res.json({ ok: true, requestId: reqRef.id, status: "pending" });
+    }
 
-// A secure backend is the only authority for role claims. Add admin UIDs in
-// Firestore Console at admins/{Firebase Auth UID}, with { enabled: true }.
+    // ----------------------------------------------------
+    // reviewWithdrawal (Admin)
+    // ----------------------------------------------------
+    if (path === '/reviewWithdrawal' || req.headers['x-action'] === 'reviewWithdrawal') {
+      const adminUid = await requireAdmin(req);
+      const { requestId, approve, note = "" } = data;
+      
+      const reqRef = db.doc(`withdrawalRequests/${requestId}`);
+      await db.runTransaction(async (tx) => {
+        const reqSnap = await tx.get(reqRef);
+        if (!reqSnap.exists) throw new Error("Withdrawal request not found.");
+        const withdrawalReq = reqSnap.data();
+        if (withdrawalReq.status !== "pending") throw new Error("Request already reviewed.");
+        
+        const userRef = db.doc(`users/${withdrawalReq.uid}`);
+        const userSnap = await tx.get(userRef);
+        if (!userSnap.exists) throw new Error("User profile missing.");
+        
+        tx.update(userRef, {
+          reservedWithdrawal: FieldValue.increment(-withdrawalReq.amount),
+          ...(approve ? { cashBalance: FieldValue.increment(-withdrawalReq.amount) } : {})
+        });
+        tx.update(reqRef, {
+          status: approve ? "paid" : "rejected",
+          reviewedBy: adminUid, reviewNote: String(note).slice(0, 500),
+          reviewedAt: FieldValue.serverTimestamp()
+        });
+        
+        if (approve) {
+          tx.set(db.collection("walletLedger").doc(), {
+            uid: withdrawalReq.uid, type: "withdrawal", amount: -withdrawalReq.amount,
+            requestId, approvedBy: adminUid, createdAt: FieldValue.serverTimestamp()
+          });
+        }
+      });
+      return res.json({ ok: true });
+    }
+
+    // ----------------------------------------------------
+    // setRoomState (Admin)
+    // ----------------------------------------------------
+    if (path === '/setRoomState' || req.headers['x-action'] === 'setRoomState') {
+      const adminUid = await requireAdmin(req);
+      const { status, calledNumbers = [], playersCount = 0, prizePool = 0 } = data;
+      
+      if (!["waiting", "registering", "calling", "finished"].includes(status)) {
+        return res.json({ ok: false, error: "Invalid room status." }, 400);
+      }
+      
+      await db.doc("gameRooms/main").set({
+        status, calledNumbers, playersCount, prizePool,
+        updatedBy: adminUid, updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      
+      return res.json({ ok: true });
+    }
+
+    return res.json({ error: "Endpoint not found" }, 404);
+
+  } catch (err) {
+    error(err.message);
+    return res.json({ ok: false, error: err.message }, 500);
+  }
+};
