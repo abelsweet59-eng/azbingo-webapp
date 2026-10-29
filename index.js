@@ -14,50 +14,45 @@ export default async ({ req, res, log, error }) => {
     const userId = req.headers['x-appwrite-user-id'] || '';
 
     try {
-        let body = {};
-        if (req.payload) {
-            try {
-                body = typeof req.payload === 'string' ? JSON.parse(req.payload) : req.payload;
-            } catch (e) {
-                body = {};
-            }
-        } else if (req.body) {
-            try {
-                body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-            } catch (e) {
-                body = {};
-            }
-        }
-
-        const headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": "application/json"
-        };
-
         if (path === "/createUserProfile" && method === "POST") {
-            return res.json({ ok: true, message: "Profile initialized" }, 200, headers);
+            return res.send(JSON.stringify({ ok: true, message: "Profile initialized" }), 200, {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json"
+            });
         }
         
         if (path === "/requestDeposit" && method === "POST") {
             log(`Deposit requested by user ${userId}`);
-            return res.json({ ok: true, message: "Deposit request received successfully" }, 200, headers);
+            return res.send(JSON.stringify({ ok: true, message: "Deposit request received successfully" }), 200, {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json"
+            });
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
             log(`Withdrawal requested by user ${userId}`);
-            return res.json({ ok: true, message: "Withdrawal request received successfully" }, 200, headers);
+            return res.send(JSON.stringify({ ok: true, message: "Withdrawal request received successfully" }), 200, {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json"
+            });
         }
 
         if (path === "/verifyAdmin" && method === "POST") {
             const isAdmin = (userId === ADMIN_ID);
-            return res.json({ isAdmin }, 200, headers);
+            return res.send(JSON.stringify({ isAdmin }), 200, {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json"
+            });
         }
 
-        return res.json({ error: "Route not found" }, 404, headers);
+        return res.send(JSON.stringify({ error: "Route not found" }), 404, {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+        });
 
     } catch (err) {
         error(`Server Error: ${err.message}`);
-        return res.json({ error: err.message }, 200, {
+        return res.send(JSON.stringify({ error: err.message }), 200, {
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json"
         });
