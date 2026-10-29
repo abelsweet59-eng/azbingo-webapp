@@ -953,26 +953,12 @@
         }
 
         async function openAdminPanel() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/verifyAdmin`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-appwrite-user-id': telegramUserId
-                    }
-                });
-                const text = await res.text();
-                let data;
-                try { data = JSON.parse(text); } catch (e) { data = { isAdmin: false }; }
-
-                if (data.isAdmin) {
-                    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-                    document.getElementById('tab-admin-panel').classList.remove('hidden');
-                } else {
-                    alert('Admin controls must be accessed via authorized permissions.');
-                }
-            } catch (err) {
-                alert('Authorization check failed: ' + err.message);
+            // በቀጥታ በአካባቢያዊ ዩዘር አይዲ ማረጋገጫ (Local Admin Check)
+            if (telegramUserId === "371093083") {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+                document.getElementById('tab-admin-panel').classList.remove('hidden');
+            } else {
+                alert('Admin controls must be accessed via authorized permissions.');
             }
         }
 
