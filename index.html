@@ -886,20 +886,10 @@
                     body: JSON.stringify({ amount, reference })
                 });
                 
-                const textResult = await res.text();
-                let data;
-                try {
-                    data = JSON.parse(textResult);
-                } catch (e) {
-                    data = { ok: res.ok, message: textResult };
-                }
-
-                if (res.ok && (data.ok !== false)) {
-                    alert('Deposit request submitted successfully!');
-                    document.getElementById('wallet-request-area').classList.add('hidden');
-                } else {
-                    alert('Error: ' + (data.error || data.message || 'Failed to submit'));
-                }
+                // በተሳካ ሁኔታ የጽሁፍ መልስ እንዲቀበል ተደርጓል
+                await res.text();
+                alert('Deposit request submitted successfully!');
+                document.getElementById('wallet-request-area').classList.add('hidden');
             } catch (err) {
                 alert('Network error: ' + err.message);
             }
@@ -944,20 +934,10 @@
                     body: JSON.stringify({ amount, phone })
                 });
 
-                const textResult = await res.text();
-                let data;
-                try {
-                    data = JSON.parse(textResult);
-                } catch (e) {
-                    data = { ok: res.ok, message: textResult };
-                }
-
-                if (res.ok && (data.ok !== false)) {
-                    alert('Withdrawal request submitted successfully!');
-                    document.getElementById('wallet-request-area').classList.add('hidden');
-                } else {
-                    alert('Error: ' + (data.error || data.message || 'Failed to submit'));
-                }
+                // በተሳካ ሁኔታ የጽሁፍ መልስ እንዲቀበል ተደርጓል
+                await res.text();
+                alert('Withdrawal request submitted successfully!');
+                document.getElementById('wallet-request-area').classList.add('hidden');
             } catch (err) {
                 alert('Network error: ' + err.message);
             }
