@@ -304,7 +304,6 @@
     <script>
         const API_BASE_URL = "https://azbingoapi.fra.appwrite.run";
         
-        // Telegram User Identification Helper
         let telegramUserId = "test-user-123";
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             telegramUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id);
@@ -354,7 +353,9 @@
                     },
                     body: JSON.stringify({})
                 });
-                const data = await res.json();
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch(e) { data = {ok: true}; }
                 if (data.ok) {
                     updateWalletUI();
                 }
@@ -859,12 +860,20 @@
                     },
                     body: JSON.stringify({ amount, reference })
                 });
-                const data = await res.json();
-                if (data.ok) {
+                
+                const textResult = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(textResult);
+                } catch (e) {
+                    data = { ok: res.ok, message: textResult };
+                }
+
+                if (res.ok && (data.ok !== false)) {
                     alert('Deposit request submitted successfully!');
                     document.getElementById('wallet-request-area').classList.add('hidden');
                 } else {
-                    alert('Error: ' + (data.error || 'Failed to submit'));
+                    alert('Error: ' + (data.error || data.message || 'Failed to submit'));
                 }
             } catch (err) {
                 alert('Network error: ' + err.message);
@@ -909,12 +918,20 @@
                     },
                     body: JSON.stringify({ amount, phone })
                 });
-                const data = await res.json();
-                if (data.ok) {
+
+                const textResult = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(textResult);
+                } catch (e) {
+                    data = { ok: res.ok, message: textResult };
+                }
+
+                if (res.ok && (data.ok !== false)) {
                     alert('Withdrawal request submitted successfully!');
                     document.getElementById('wallet-request-area').classList.add('hidden');
                 } else {
-                    alert('Error: ' + (data.error || 'Failed to submit'));
+                    alert('Error: ' + (data.error || data.message || 'Failed to submit'));
                 }
             } catch (err) {
                 alert('Network error: ' + err.message);
