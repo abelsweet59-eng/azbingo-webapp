@@ -1,6 +1,7 @@
 export default async ({ req, res, log, error }) => {
     const path = req.path || '';
     const method = req.method;
+    const ADMIN_ID = "371093083";
 
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,8 @@ export default async ({ req, res, log, error }) => {
         return res.send("", 200, corsHeaders);
     }
 
+    const userId = req.headers['x-appwrite-user-id'] || '';
+
     try {
         if (path === "/createUserProfile" && method === "POST") {
             return res.send(JSON.stringify({ ok: true, message: "Profile initialized" }), 200, {
@@ -21,17 +24,29 @@ export default async ({ req, res, log, error }) => {
         }
         
         if (path === "/requestDeposit" && method === "POST") {
-            return res.send(JSON.stringify({ ok: true, message: "Deposit request received" }), 200, {
+            const body = JSON.parse(req.body || '{}');
+            log(`Deposit requested by user ${userId}: Amount = ${body.amount}, Ref = ${body.reference}`);
+            return res.send(JSON.stringify({ ok: true, message: "Deposit request received successfully" }), 200, {
                 ...corsHeaders,
                 "Content-Type": "application/json"
             });
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
-            return res.send(JSON.stringify({ ok: true, message: "Withdrawal request received" }), 200, {
+            const body = JSON.parse(req.body || '{}');
+            log(`Withdrawal requested by user ${userId}: Amount = ${body.amount}`);
+            return res.send(JSON.stringify({ ok: true, message: "Withdrawal request received successfully" }), 200, {
                 ...corsHeaders,
                 "Content-Type": "application/json"
             });
+        }
+
+        // Admin verification route
+        if (path === "/verifyAdmin" && method === "POST") {
+            if (userId === ADMIN_ID) {
+                return res.send(JSON.stringify({ isAdmin: true }), 200, { ...corsHeaders, "Content-Type": "application/json" });
+            }
+            return res.send(JSON.stringify({ isAdmin: false }), 200, { ...corsHeaders, "Content-Type": "application/json" });
         }
 
         return res.send(JSON.stringify({ error: "Route not found" }), 404, {
