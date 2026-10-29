@@ -3,14 +3,12 @@ export default async ({ req, res, log, error }) => {
     const method = req.method;
     const ADMIN_ID = "371093083";
 
-    const corsHeaders = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, x-appwrite-user-id"
-    };
-
     if (method === "OPTIONS") {
-        return res.send("", 200, corsHeaders);
+        return res.send("OK", 200, {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, x-appwrite-user-id"
+        });
     }
 
     const userId = req.headers['x-appwrite-user-id'] || '';
@@ -31,32 +29,37 @@ export default async ({ req, res, log, error }) => {
             }
         }
 
+        const headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+        };
+
         if (path === "/createUserProfile" && method === "POST") {
-            return res.send("Profile initialized successfully", 200, corsHeaders);
+            return res.json({ ok: true, message: "Profile initialized" }, 200, headers);
         }
         
         if (path === "/requestDeposit" && method === "POST") {
             log(`Deposit requested by user ${userId}`);
-            return res.send("Deposit request received successfully", 200, corsHeaders);
+            return res.json({ ok: true, message: "Deposit request received successfully" }, 200, headers);
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
             log(`Withdrawal requested by user ${userId}`);
-            return res.send("Withdrawal request received successfully", 200, corsHeaders);
+            return res.json({ ok: true, message: "Withdrawal request received successfully" }, 200, headers);
         }
 
         if (path === "/verifyAdmin" && method === "POST") {
             const isAdmin = (userId === ADMIN_ID);
-            return res.send(JSON.stringify({ isAdmin }), 200, {
-                ...corsHeaders,
-                "Content-Type": "application/json"
-            });
+            return res.json({ isAdmin }, 200, headers);
         }
 
-        return res.send("Route not found", 404, corsHeaders);
+        return res.json({ error: "Route not found" }, 404, headers);
 
     } catch (err) {
-        error(`Server Error: ${err.stack || err.message}`);
-        return res.send("Server Error: " + err.message, 200, corsHeaders);
+        error(`Server Error: ${err.message}`);
+        return res.json({ error: err.message }, 200, {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+        });
     }
 };
