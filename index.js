@@ -2,13 +2,14 @@ import { Client, Databases, Users } from 'node-appwrite';
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-// Firebase Admin initialization (Firestore-ን በቀጥታ ለመጠቀም)
-initializeApp();
+// Firebase Admin initialization with explicit Project ID
+initializeApp({
+  projectId: "az-bingo"
+});
 const db = getFirestore();
 
 // 1. ዩዘሩ መግባቱን ማረጋገጫ (Auth Verification)
 function requireUser(req) {
-  // Appwrite በ Headers በኩል የዩዘርን መረጃ ያሳልፋል (ወይም ከአፕራይት SDK)
   const userHeader = req.headers['x-appwrite-user-id'];
   if (!userHeader) {
     throw new Error("Unauthorized: Sign in first.");
@@ -32,7 +33,6 @@ function validAmount(amount, minimum = 100) {
 
 // 3. ዋናው የአፕራይት ፋንክሽን መግቢያ (Entry Point)
 export default async ({ req, res, log, error }) => {
-  // የትኛውን ኤፒአይ (Endpoint / Action) እንደሚፈልግ ከ Path ወይም ከ Request Body እንቀበላለን
   const path = req.path || '/';
   const data = req.body || {};
 
