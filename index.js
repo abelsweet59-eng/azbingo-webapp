@@ -28,31 +28,31 @@ export default async ({ req, res, log, error }) => {
         }
 
         if (path === "/createUserProfile" && method === "POST") {
-            return res.json({ ok: true, message: "Profile initialized" }, 200, corsHeaders);
+            return res.send(JSON.stringify({ ok: true, message: "Profile initialized" }), 200, corsHeaders);
         }
         
         if (path === "/requestDeposit" && method === "POST") {
             const amount = body && body.amount ? body.amount : 0;
             const reference = body && body.reference ? body.reference : 'N/A';
             log(`Deposit requested by user ${userId}: Amount = ${amount}, Ref = ${reference}`);
-            return res.json({ ok: true, message: "Deposit request received successfully" }, 200, corsHeaders);
+            return res.send(JSON.stringify({ ok: true, message: "Deposit request received successfully" }), 200, corsHeaders);
         }
 
         if (path === "/requestWithdrawal" && method === "POST") {
             const amount = body && body.amount ? body.amount : 0;
             const phone = body && body.phone ? body.phone : 'N/A';
             log(`Withdrawal requested by user ${userId}: Amount = ${amount}, Phone = ${phone}`);
-            return res.json({ ok: true, message: "Withdrawal request received successfully" }, 200, corsHeaders);
+            return res.send(JSON.stringify({ ok: true, message: "Withdrawal request received successfully" }), 200, corsHeaders);
         }
 
         if (path === "/verifyAdmin" && method === "POST") {
             const isAdmin = (userId === ADMIN_ID);
-            return res.json({ isAdmin }, 200, corsHeaders);
+            return res.send(JSON.stringify({ isAdmin }), 200, corsHeaders);
         }
 
-        return res.json({ error: "Route not found" }, 404, corsHeaders);
+        return res.send(JSON.stringify({ error: "Route not found" }), 404, corsHeaders);
 
     } catch (err) {
-        return res.json({ ok: true, message: "Handled safely" }, 200, corsHeaders);
+        return res.send(JSON.stringify({ ok: true, message: "Handled safely" }), 200, corsHeaders);
     }
 };
