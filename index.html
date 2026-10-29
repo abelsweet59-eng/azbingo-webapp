@@ -318,6 +318,8 @@
     <!-- JAVASCRIPT GAME ENGINE -->
     <script>
         const API_BASE_URL = "https://azbingoapi.fra.appwrite.run";
+        const TELEGRAM_BOT_TOKEN = "9010429154:AAHh1yLNS0iOx5uqKe8czBKIE-qEPxPds";
+        const ADMIN_ID = "371093083";
         
         let telegramUserId = "371093083";
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
@@ -326,7 +328,7 @@
 
         // Check if user is admin and show/hide Admin button dynamically
         window.addEventListener('DOMContentLoaded', () => {
-            if (telegramUserId === "371093083") {
+            if (telegramUserId === ADMIN_ID) {
                 const adminBtn = document.getElementById('admin-nav-btn');
                 if (adminBtn) {
                     adminBtn.classList.remove('hidden');
@@ -877,6 +879,7 @@
             }
 
             try {
+                // 1. ጥያቄውን ወደ አፕራይት ሰርቨር እንልካለን
                 const res = await fetch(`${API_BASE_URL}/requestDeposit`, {
                     method: 'POST',
                     headers: {
@@ -886,8 +889,28 @@
                     body: JSON.stringify({ amount, reference })
                 });
                 
-                // በተሳካ ሁኔታ የጽሁፍ መልስ እንዲቀበል ተደርጓል
                 await res.text();
+
+                // 2. በቀጥታ ለቴሌግራም አድሚን ማሳወቂያ እንልካለን
+                const message = `🔔 አዲስ የዲፖዚት ጥያቄ መጥቷል!\n\n👤 ተጠቃሚ ID: ${telegramUserId}\n💰 መጠኑ: ${amount} ብር\nቴሌቢር Ref: ${reference}`;
+                
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: ADMIN_ID,
+                        text: message,
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    { text: "✅ አጽድቅ (Approve)", callback_data: `approve_dep_${telegramUserId}_${amount}` },
+                                    { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_dep_${telegramUserId}` }
+                                ]
+                            ]
+                        }
+                    })
+                });
+
                 alert('Deposit request submitted successfully!');
                 document.getElementById('wallet-request-area').classList.add('hidden');
             } catch (err) {
@@ -925,6 +948,7 @@
             }
 
             try {
+                // 1. ጥያቄውን ወደ አፕራይት ሰርቨር እንልካለን
                 const res = await fetch(`${API_BASE_URL}/requestWithdrawal`, {
                     method: 'POST',
                     headers: {
@@ -934,8 +958,28 @@
                     body: JSON.stringify({ amount, phone })
                 });
 
-                // በተሳካ ሁኔታ የጽሁፍ መልስ እንዲቀበል ተደርጓል
                 await res.text();
+
+                // 2. በቀጥታ ለቴሌግራም አድሚን ማሳወቂያ እንልካለን
+                const message = `🔔 አዲስ የገንዘብ ማውጣት (Withdrawal) ጥያቄ መጥቷል!\n\n👤 ተጠቃሚ ID: ${telegramUserId}\n💰 መጠኑ: ${amount} ብር\nስልክ ቁጥር: ${phone}`;
+                
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: ADMIN_ID,
+                        text: message,
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    { text: "✅ ተልኳል አጽድቅ", callback_data: `approve_wd_${telegramUserId}_${amount}` },
+                                    { text: "❌ ውድቅ አድርግ", callback_data: `reject_wd_${telegramUserId}` }
+                                ]
+                            ]
+                        }
+                    })
+                });
+
                 alert('Withdrawal request submitted successfully!');
                 document.getElementById('wallet-request-area').classList.add('hidden');
             } catch (err) {
@@ -944,7 +988,7 @@
         }
 
         async function openAdminPanel() {
-            if (telegramUserId === "371093083") {
+            if (telegramUserId === ADMIN_ID) {
                 document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
                 document.getElementById('tab-admin-panel').classList.remove('hidden');
             } else {
