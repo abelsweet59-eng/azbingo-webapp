@@ -1,16 +1,11 @@
 {
-  "name": "az-bingo-functions",
-  "private": true,
-  "engines": {
-    "node": "20"
-  },
+  "name": "azbingo-api",
+  "version": "1.0.0",
+  "description": "AZBingo API for Appwrite",
   "main": "index.js",
-  "scripts": {
-    "serve": "firebase emulators:start --only functions,firestore",
-    "deploy": "firebase deploy --only functions,firestore:rules"
-  },
+  "type": "module",
   "dependencies": {
-    "firebase-admin": "^13.0.0",
-    "firebase-functions": "^6.0.0"
+    "firebase-admin": "^12.0.0",
+    "node-appwrite": "^13.0.0"
   }
 }
